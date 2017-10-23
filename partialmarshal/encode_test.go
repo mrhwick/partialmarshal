@@ -1,10 +1,36 @@
 package partialmarshal
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func ExampleMarshal() {
+	// A struct type with partialmarshal.Extra included as an embedded type
+	type examplestruct struct {
+		ExampleFieldOne string
+		ExampleFieldTwo string `json:"example_field_two"`
+		Extra
+	}
+
+	// An instance of that type
+	source := examplestruct{
+		"Value 1",
+		"Value 2",
+		Extra{
+			"some_other_field": "some other value",
+		},
+	}
+
+	// Marshaling into JSON-formatted string.
+	JSONData, _ := Marshal(source)
+	fmt.Println(string(JSONData))
+
+	// Output:
+	// {"ExampleFieldOne":"Value 1","example_field_two":"Value 2","some_other_field":"some other value"}
+}
 
 func TestMarshal(t *testing.T) {
 	testCases := []struct {

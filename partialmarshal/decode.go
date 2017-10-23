@@ -90,7 +90,7 @@ func checkHasFieldInStruct(v interface{}, fieldKey string) error {
 	for i := 0; i < value.Type().NumField(); i++ {
 		field := value.Type().Field(i)
 
-		if strings.ToLower(field.Name) == fieldKey {
+		if strings.ToLower(field.Name) == fieldKey || field.Name == fieldKey {
 			return nil
 		}
 

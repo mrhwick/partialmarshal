@@ -1,10 +1,55 @@
 package partialmarshal
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func ExampleUnmarshal() {
+	// A JSON-formatted string
+	JSONData := []byte(`{
+		"ExampleFieldOne": "value 1",
+		"example_field_two": "value 2",
+		"some_other_field": "some other value"
+	}`)
+
+	// A struct type with partialmarshal.Extra included as an embedded type
+	type StructWithExtra struct {
+		ExampleFieldOne string
+		ExampleFieldTwo string `json:"example_field_two"`
+		Extra
+	}
+
+	// A struct type without partialmarshal.Extra included as an embedded type
+	type StructWithoutExtra struct {
+		ExampleFieldOne string
+		ExampleFieldTwo string `json:"example_field_two"`
+	}
+
+	fmt.Println("Nominal Case:")
+	var destination StructWithExtra
+	err := Unmarshal(JSONData, &destination)
+	fmt.Println(err)
+	fmt.Println(destination.ExampleFieldOne)
+	fmt.Println(destination.ExampleFieldTwo)
+	fmt.Printf("%#v", destination.Extra)
+
+	fmt.Println("\n\nError Case:")
+	var badDestination StructWithoutExtra
+	err = Unmarshal(JSONData, &badDestination)
+	fmt.Println(err)
+	// Output:
+	// Nominal Case:
+	// <nil>
+	// value 1
+	// value 2
+	// partialmarshal.Extra{"some_other_field":"some other value"}
+	//
+	// Error Case:
+	// no partialmarshal.Extra embedded type found in provided struct
+}
 
 func TestUnmarshal(t *testing.T) {
 	testCases := []struct {
@@ -71,70 +116,6 @@ func TestUnmarshal(t *testing.T) {
 	}
 }
 
-func TestCheckHasExtra(t *testing.T) {
-
-	testCases := []struct {
-		testDescription string
-		in              interface{}
-		outErrMsg       string
-	}{
-		// Happy Path Cases
-		{
-			"Should return nil for struct type with Extra substruct",
-			struct {
-				someOtherField string
-				Extra
-			}{},
-			"",
-		},
-		{
-			"Should return nil for struct pointer type with Extra substruct",
-			&struct {
-				someOtherField string
-				Extra
-			}{},
-			"",
-		},
-		// Sad Path Cases
-		{
-			"Should return error for struct type without Extra substruct",
-			struct {
-				someOtherField string
-			}{},
-			"no partialmarshal.Extra embedded type found in provided struct",
-		},
-		{
-			"Should return error for struct pointer type without Extra substruct",
-			&struct {
-				someOtherField string
-			}{},
-			"no partialmarshal.Extra embedded type found in provided struct",
-		},
-		{
-			"Should return error for non-struct type string",
-			"",
-			"value must be of type struct",
-		},
-		{
-			"Should return error for non-struct type number",
-			1990,
-			"value must be of type struct",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.testDescription, func(t *testing.T) {
-			err := checkHasExtra(tc.in)
-
-			if tc.outErrMsg != "" {
-				assert.EqualError(t, err, tc.outErrMsg)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
-}
-
 func TestCheckHasFieldInStruct(t *testing.T) {
 	testCases := []struct {
 		testDescription string
@@ -189,6 +170,14 @@ func TestCheckHasFieldInStruct(t *testing.T) {
 				TestFieldFive string
 			}{},
 			"testfieldfive",
+			"",
+		},
+		{
+			"Should detect field w/ same case when matching field name & no JSON tag w/ struct pointer value",
+			&struct {
+				TestFieldFive string
+			}{},
+			"TestFieldFive",
 			"",
 		},
 		// Sad Path Cases
