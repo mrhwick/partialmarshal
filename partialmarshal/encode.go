@@ -24,6 +24,7 @@ func Marshal(v interface{}) ([]byte, error) {
 
 	// 2. Convert the value v into a map[string]interface{}
 
+	// https://github.com/fatih/structs/issues/25
 	structs.DefaultTagName = "json"
 	valueAsMap := structs.Map(v)
 	delete(valueAsMap, "Extra")
