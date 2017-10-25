@@ -1,4 +1,5 @@
-# PartialMarshal
+# PartialMarshal [![GoDoc](https://godoc.org/github.com/skuid/partialmarshal?status.svg)](https://godoc.org/github.com/skuid/partialmarshal) [![Build Status](https://travis-ci.org/skuid/PartialMarshal.svg?branch=master)](https://travis-ci.org/skuid/PartialMarshal) [![Go Report Card](https://goreportcard.com/badge/github.com/skuid/partialmarshal)](https://goreportcard.com/report/github.com/skuid/partialmarshal)
+
 A Go library for JSON marshaling  with extra payloads.
 
 Standard Go JSON marshaling into a struct discards any unmatching fields from the JSON payload. In some use cases, the developer does not want to discard this extra payload data. This library provides a familiar interface for performing marshaling and unmarshaling while keeping any extra data for use by the calling code.
