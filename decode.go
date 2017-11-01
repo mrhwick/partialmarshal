@@ -49,6 +49,67 @@ func Unmarshal(data []byte, v interface{}) error {
 	extraField := reflect.Indirect(reflect.ValueOf(v)).FieldByName("Extra")
 	extraField.Set(reflect.ValueOf(extraPayload))
 
+	// 5. Do recursive partial unmarshaling of substructs
+	recursePartialUnmarshalForSubstructs(data, v)
+
+	return nil
+}
+
+func recursePartialUnmarshalForSubstructs(data []byte, v interface{}) error {
+	// Get the struct type of the v interface{}
+
+	parent := reflect.Indirect(reflect.ValueOf(v))
+	if parent.Kind() != reflect.Struct {
+		return errors.New("value must be of type struct")
+	}
+
+	// Convert the data into a map of raw JSON messages
+	var rawMessageMap map[string]json.RawMessage
+	err := json.Unmarshal(data, &rawMessageMap)
+	if err != nil {
+		return err
+	}
+
+	// Loop over the given struct by fields
+	for i := 0; i < parent.Type().NumField(); i++ {
+		field := parent.Type().Field(i)
+
+		// Whenever we encounter a struct kind field
+		if field.Type.Kind() == reflect.Struct {
+
+			// Create a temporary storage variable of the same type as the child struct
+			temporaryChild := reflect.New(field.Type).Interface()
+
+			// Determine which raw data is associated with this child struct
+			var matchingRawData json.RawMessage
+			for key := range rawMessageMap {
+
+				// Directly by name
+				if key == field.Name {
+					matchingRawData = rawMessageMap[key]
+				}
+
+				// By JSON tags
+				tags := strings.Split(field.Tag.Get("json"), ",")
+				for _, tag := range tags {
+					if tag == key {
+						matchingRawData = rawMessageMap[key]
+					}
+				}
+			}
+
+			// Recursively run partialmarshal unmarshaling on the associated raw JSON
+			err = Unmarshal(matchingRawData, temporaryChild)
+			if err != nil {
+				return err
+			}
+
+			// Set the recursively unmarshaled child struct to the value of the field in the parent
+			actualStruct := reflect.Indirect(reflect.ValueOf(temporaryChild))
+			parent.FieldByName(field.Name).Set(actualStruct)
+		}
+	}
+
 	return nil
 }
 
@@ -86,7 +147,6 @@ func checkHasFieldInStruct(v interface{}, fieldKey string) error {
 	if value.Kind() != reflect.Struct {
 		return errors.New("value must be of type struct")
 	}
-
 	for i := 0; i < value.Type().NumField(); i++ {
 		field := value.Type().Field(i)
 

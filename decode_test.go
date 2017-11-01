@@ -78,6 +78,163 @@ func TestUnmarshal(t *testing.T) {
 			},
 			"",
 		},
+		{
+			"should unmarshal extra payload into extra field of substruct",
+			[]byte(`{"field_one": "value one", "FieldSubStruct": {"sub_field_one": "sub value one", "sub_field_two": "sub value two"}, "field_two": "value two"}`),
+			&struct {
+				FieldOne       string `json:"field_one"`
+				FieldSubStruct struct {
+					SubFieldOne string `json:"sub_field_one"`
+					Extra
+				}
+				Extra
+			}{},
+			&struct {
+				FieldOne       string `json:"field_one"`
+				FieldSubStruct struct {
+					SubFieldOne string `json:"sub_field_one"`
+					Extra
+				}
+				Extra
+			}{
+				"value one",
+				struct {
+					SubFieldOne string `json:"sub_field_one"`
+					Extra
+				}{
+					"sub value one",
+					map[string]interface{}{
+						"sub_field_two": "sub value two",
+					},
+				},
+				map[string]interface{}{
+					"field_two": "value two",
+				},
+			},
+			"",
+		},
+		{
+			"should unmarshal extra payload into extra field of substruct with matching json tags",
+			[]byte(`{"field_one": "value one", "FieldSubStruct": {"sub_field_one": "sub value one", "sub_field_two": "sub value two"}, "field_two": "value two"}`),
+			&struct {
+				FieldOne       string `json:"field_one"`
+				FieldSubStruct struct {
+					SubFieldOne string `json:"sub_field_one"`
+					Extra
+				}
+				Extra
+			}{},
+			&struct {
+				FieldOne       string `json:"field_one"`
+				FieldSubStruct struct {
+					SubFieldOne string `json:"sub_field_one"`
+					Extra
+				}
+				Extra
+			}{
+				"value one",
+				struct {
+					SubFieldOne string `json:"sub_field_one"`
+					Extra
+				}{
+					"sub value one",
+					map[string]interface{}{
+						"sub_field_two": "sub value two",
+					},
+				},
+				map[string]interface{}{
+					"field_two": "value two",
+				},
+			},
+			"",
+		},
+		{
+			"should unmarshal extra payload into extra field of substruct with matching substruct json tags",
+			[]byte(`{"field_one": "value one", "field_sub_struct": {"sub_field_one": "sub value one", "sub_field_two": "sub value two"}, "field_two": "value two"}`),
+			&struct {
+				FieldOne       string `json:"field_one"`
+				FieldSubStruct struct {
+					SubFieldOne string `json:"sub_field_one"`
+					Extra
+				} `json:"field_sub_struct"`
+				Extra
+			}{},
+			&struct {
+				FieldOne       string `json:"field_one"`
+				FieldSubStruct struct {
+					SubFieldOne string `json:"sub_field_one"`
+					Extra
+				} `json:"field_sub_struct"`
+				Extra
+			}{
+				"value one",
+				struct {
+					SubFieldOne string `json:"sub_field_one"`
+					Extra
+				}{
+					"sub value one",
+					map[string]interface{}{
+						"sub_field_two": "sub value two",
+					},
+				},
+				map[string]interface{}{
+					"field_two": "value two",
+				},
+			},
+			"",
+		},
+		{
+			"should unmarshal extra payload into extra field of multiple substructs with matching substruct json tags",
+			[]byte(`{"field_one": "value one", "field_sub_struct_one": {"sub_field_one": "sub value one", "sub_field_two": "sub value two"}, "field_sub_struct_two": {"sub_field_three": "sub value three", "sub_field_four": "sub value four"}, "field_two": "value two"}`),
+			&struct {
+				FieldOne          string `json:"field_one"`
+				FieldSubStructOne struct {
+					SubFieldOne string `json:"sub_field_one"`
+					Extra
+				} `json:"field_sub_struct_one"`
+				FieldSubStructTwo struct {
+					SubFieldThree string `json:"sub_field_three"`
+					Extra
+				} `json:"field_sub_struct_two"`
+				Extra
+			}{},
+			&struct {
+				FieldOne          string `json:"field_one"`
+				FieldSubStructOne struct {
+					SubFieldOne string `json:"sub_field_one"`
+					Extra
+				} `json:"field_sub_struct_one"`
+				FieldSubStructTwo struct {
+					SubFieldThree string `json:"sub_field_three"`
+					Extra
+				} `json:"field_sub_struct_two"`
+				Extra
+			}{
+				"value one",
+				struct {
+					SubFieldOne string `json:"sub_field_one"`
+					Extra
+				}{
+					"sub value one",
+					map[string]interface{}{
+						"sub_field_two": "sub value two",
+					},
+				},
+				struct {
+					SubFieldThree string `json:"sub_field_three"`
+					Extra
+				}{
+					"sub value three",
+					map[string]interface{}{
+						"sub_field_four": "sub value four",
+					},
+				},
+				map[string]interface{}{
+					"field_two": "value two",
+				},
+			},
+			"",
+		},
 		// Sad Path Cases
 		{
 			"should return error when provided value not struct pointer",
