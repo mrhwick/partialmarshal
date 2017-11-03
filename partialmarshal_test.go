@@ -1,70 +1,58 @@
 package partialmarshal
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCheckHasExtra(t *testing.T) {
-
+func TestGetReflectedValue(t *testing.T) {
 	testCases := []struct {
 		testDescription string
-		in              interface{}
+		inInterface     interface{}
 		outErrMsg       string
 	}{
-		// Happy Path Cases
+		// Happy Path
 		{
-			"Should return nil for struct type with Extra substruct",
-			struct {
-				someOtherField string
-				Extra
-			}{},
-			"",
-		},
-		{
-			"Should return nil for struct pointer type with Extra substruct",
+			"should return reflect.Value as expected",
 			&struct {
-				someOtherField string
-				Extra
-			}{},
+				FieldOne string
+			}{
+				"some value",
+			},
 			"",
 		},
-		// Sad Path Cases
+		// Sad Path
 		{
-			"Should return error for struct type without Extra substruct",
+			"should return error when not pointer",
 			struct {
-				someOtherField string
-			}{},
-			"no partialmarshal.Extra embedded type found in provided struct",
+				FieldOne string
+			}{
+				"some value",
+			},
+			"json: Unmarshal(non-pointer struct { FieldOne string })",
 		},
 		{
-			"Should return error for struct pointer type without Extra substruct",
-			&struct {
-				someOtherField string
-			}{},
-			"no partialmarshal.Extra embedded type found in provided struct",
+			"should return error when nil",
+			nil,
+			"json: Unmarshal(nil)",
 		},
 		{
-			"Should return error for non-struct type string",
-			"",
-			"value must be of type struct",
-		},
-		{
-			"Should return error for non-struct type number",
-			1990,
-			"value must be of type struct",
+			"should return error when pointer to non-struct kind",
+			&map[string]string{"foo": "bar"},
+			"json: Unmarshal(nil *map[string]string)",
 		},
 	}
-
 	for _, tc := range testCases {
 		t.Run(tc.testDescription, func(t *testing.T) {
-			err := checkHasExtra(tc.in)
-
+			valueResult, err := getReflectedValue(tc.inInterface)
 			if tc.outErrMsg != "" {
 				assert.EqualError(t, err, tc.outErrMsg)
 			} else {
 				assert.NoError(t, err)
+				expectedValud := reflect.Indirect(reflect.ValueOf(tc.inInterface))
+				assert.Equal(t, expectedValud, valueResult)
 			}
 		})
 	}

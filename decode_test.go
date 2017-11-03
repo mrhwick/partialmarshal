@@ -1,7 +1,9 @@
 package partialmarshal
 
 import (
+	"encoding/json"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -34,21 +36,14 @@ func ExampleUnmarshal() {
 	fmt.Println(err)
 	fmt.Println(destination.ExampleFieldOne)
 	fmt.Println(destination.ExampleFieldTwo)
-	fmt.Printf("%#v", destination.Extra)
+	fmt.Printf("%s", destination.Extra["some_other_field"])
 
-	fmt.Println("\n\nError Case:")
-	var badDestination StructWithoutExtra
-	err = Unmarshal(JSONData, &badDestination)
-	fmt.Println(err)
 	// Output:
 	// Nominal Case:
 	// <nil>
 	// value 1
 	// value 2
-	// partialmarshal.Extra{"some_other_field":"some other value"}
-	//
-	// Error Case:
-	// no partialmarshal.Extra embedded type found in provided struct
+	// "some other value"
 }
 
 func TestUnmarshal(t *testing.T) {
@@ -72,8 +67,8 @@ func TestUnmarshal(t *testing.T) {
 				Extra
 			}{
 				"value one",
-				map[string]interface{}{
-					"field_two": "value two",
+				map[string]json.RawMessage{
+					"field_two": []byte("\"value two\""),
 				},
 			},
 			"",
@@ -103,12 +98,12 @@ func TestUnmarshal(t *testing.T) {
 					Extra
 				}{
 					"sub value one",
-					map[string]interface{}{
-						"sub_field_two": "sub value two",
+					map[string]json.RawMessage{
+						"sub_field_two": []byte("\"sub value two\""),
 					},
 				},
-				map[string]interface{}{
-					"field_two": "value two",
+				map[string]json.RawMessage{
+					"field_two": []byte("\"value two\""),
 				},
 			},
 			"",
@@ -138,12 +133,12 @@ func TestUnmarshal(t *testing.T) {
 					Extra
 				}{
 					"sub value one",
-					map[string]interface{}{
-						"sub_field_two": "sub value two",
+					map[string]json.RawMessage{
+						"sub_field_two": []byte("\"sub value two\""),
 					},
 				},
-				map[string]interface{}{
-					"field_two": "value two",
+				map[string]json.RawMessage{
+					"field_two": []byte("\"value two\""),
 				},
 			},
 			"",
@@ -173,12 +168,12 @@ func TestUnmarshal(t *testing.T) {
 					Extra
 				}{
 					"sub value one",
-					map[string]interface{}{
-						"sub_field_two": "sub value two",
+					map[string]json.RawMessage{
+						"sub_field_two": []byte("\"sub value two\""),
 					},
 				},
-				map[string]interface{}{
-					"field_two": "value two",
+				map[string]json.RawMessage{
+					"field_two": []byte("\"value two\""),
 				},
 			},
 			"",
@@ -216,8 +211,8 @@ func TestUnmarshal(t *testing.T) {
 					Extra
 				}{
 					"sub value one",
-					map[string]interface{}{
-						"sub_field_two": "sub value two",
+					map[string]json.RawMessage{
+						"sub_field_two": []byte("\"sub value two\""),
 					},
 				},
 				struct {
@@ -225,13 +220,26 @@ func TestUnmarshal(t *testing.T) {
 					Extra
 				}{
 					"sub value three",
-					map[string]interface{}{
-						"sub_field_four": "sub value four",
+					map[string]json.RawMessage{
+						"sub_field_four": []byte("\"sub value four\""),
 					},
 				},
-				map[string]interface{}{
-					"field_two": "value two",
+				map[string]json.RawMessage{
+					"field_two": []byte("\"value two\""),
 				},
+			},
+			"",
+		},
+		{
+			"should unmarshal normally without storing extra if Extra not embedded",
+			[]byte(`{"field_one": "value one", "field_two": "value two"}`),
+			&struct {
+				FieldOne string `json:"field_one"`
+			}{},
+			&struct {
+				FieldOne string `json:"field_one"`
+			}{
+				"value one",
 			},
 			"",
 		},
@@ -250,13 +258,6 @@ func TestUnmarshal(t *testing.T) {
 			&struct{}{},
 			"invalid character 'd' looking for beginning of value",
 		},
-		{
-			"should return error when partialmarshal.Extra not nested in provided struct",
-			[]byte(`{"field_one": "value one", "field_two": "value two"}`),
-			&struct{}{},
-			&struct{}{},
-			"no partialmarshal.Extra embedded type found in provided struct",
-		},
 	}
 
 	for _, tc := range testCases {
@@ -273,165 +274,152 @@ func TestUnmarshal(t *testing.T) {
 	}
 }
 
-func TestCheckHasFieldInStruct(t *testing.T) {
+func TestPopValueByField(t *testing.T) {
 	testCases := []struct {
 		testDescription string
-		inStruct        interface{}
-		inKey           string
-		outErrMsg       string
+		inMap           map[string]json.RawMessage
+		inField         reflect.StructField
+		inIdentifier    string
+		outRawValue     json.RawMessage
+		outFound        bool
 	}{
-		// Happy Path Cases
+		// Happy Path
 		{
-			"Should detect field when matching field name & no JSON tag",
-			struct {
-				TestFieldOne string
-			}{},
-			"testfieldone",
-			"",
+			"should find value matching field name",
+			map[string]json.RawMessage{
+				"FieldOne": []byte("\"value one\""),
+			},
+			reflect.StructField{
+				Name: "FieldOne",
+			},
+			"FieldOne",
+			[]byte(`"value one"`),
+			true,
 		},
 		{
-			"Should detect field when matching field name & no matching JSON tag",
-			struct {
-				TestFieldtwo string `json:"some_test_field_two"`
-			}{},
-			"testfieldtwo",
-			"",
+			"should find value matching field tags",
+			map[string]json.RawMessage{
+				"field_two": []byte("\"value two\""),
+			},
+			reflect.StructField{
+				Name: "FieldTwo",
+				Tag:  `json:"field_two"`,
+			},
+			"field_two",
+			[]byte(`"value two"`),
+			true,
 		},
+		// Sad Path
 		{
-			"Should detect field when no matching field name & matching JSON tag",
-			struct {
-				TestFieldThree string `json:"test_field_three"`
-			}{},
-			"test_field_three",
-			"",
-		},
-		{
-			"Should detect field when matching field name & matching JSON tag",
-			struct {
-				TestFieldFour string `json:"testfieldfour"`
-			}{},
-			"testfieldfour",
-			"",
-		},
-		{
-			"Should detect field when matching field name & matching JSON tag w/ multiple JSON tags",
-			struct {
-				TestFieldFour string `json:"testfieldfour,omitempty"`
-			}{},
-			"testfieldfour",
-			"",
-		},
-		{
-			"Should detect field when matching field name & no JSON tag w/ struct pointer value",
-			&struct {
-				TestFieldFive string
-			}{},
-			"testfieldfive",
-			"",
-		},
-		{
-			"Should detect field w/ same case when matching field name & no JSON tag w/ struct pointer value",
-			&struct {
-				TestFieldFive string
-			}{},
-			"TestFieldFive",
-			"",
-		},
-		// Sad Path Cases
-		{
-			"Should not detect field when no matching field name & no matching JSON tag",
-			struct {
-				TestfieldSix string `json:"test_field_six"`
-			}{},
-			"some_unmatching_field_name",
-			"could not find field some_unmatching_field_name in struct",
-		},
-		{
-			"Should not detect field when struct has no fields (doesn't make sense, but whatever)",
-			struct{}{},
-			"some_unmatching_field_name",
-			"could not find field some_unmatching_field_name in struct",
-		},
-		{
-			"Should throw error when provided interface not a struct",
-			8675309,
-			"does_not_matter_what_field_we_look_for_anymore",
-			"value must be of type struct",
+			"should return false found for no matching field",
+			map[string]json.RawMessage{
+				"field_three": []byte("\"value three\""),
+			},
+			reflect.StructField{
+				Name: "FieldTwo",
+				Tag:  `json:"field_two"`,
+			},
+			"field_three",
+			[]byte(nil),
+			false,
 		},
 	}
-
 	for _, tc := range testCases {
 		t.Run(tc.testDescription, func(t *testing.T) {
-			err := checkHasFieldInStruct(tc.inStruct, tc.inKey)
-			if tc.outErrMsg != "" {
-				assert.EqualError(t, err, tc.outErrMsg)
-			} else {
-				assert.NoError(t, err)
+			value, found := popValueByField(tc.inMap, tc.inField)
+			assert.Equal(t, tc.outRawValue, value)
+			assert.Equal(t, tc.outFound, found)
+			if tc.outFound {
+				// Should delete the field value from the map
+				assert.Nil(t, tc.inMap[tc.inIdentifier])
 			}
 		})
 	}
 }
 
-func TestGetExtraPayload(t *testing.T) {
-
+func TestDecodeMatching(t *testing.T) {
+	type testStruct struct {
+		FieldOne string `json:"field_one"`
+		FieldTwo int    `json:"field_two"`
+	}
 	testCases := []struct {
 		testDescription string
-		inData          []byte
-		inStruct        interface{}
-		outPayload      map[string]interface{}
+		inMap           map[string]json.RawMessage
+		inStruct        testStruct
+		outStruct       testStruct
 		outErrMsg       string
 	}{
-		// Happy Path Cases
+		// Happy Path
 		{
-			"Should return map with extra payload for JSON object with unmatching fields",
-			[]byte(`{"some_field": "some value"}`),
-			struct{}{},
-			map[string]interface{}{
-				"some_field": "some value",
+			"should fill value matching field name",
+			map[string]json.RawMessage{
+				"FieldOne": []byte(`"value one"`),
+			},
+			testStruct{},
+			testStruct{
+				"value one",
+				0,
 			},
 			"",
 		},
 		{
-			"Should return empty map for JSON object with no extra payload",
-			[]byte(`{"some_field": "some value", "somesecondfield": "some second value"}`),
-			struct {
-				SomeField       string `json:"some_field"`
-				SomeSecondField string
-			}{},
-			map[string]interface{}{},
+			"should fill value matching json tag",
+			map[string]json.RawMessage{
+				"field_one": []byte(`"value one"`),
+			},
+			testStruct{},
+			testStruct{
+				"value one",
+				0,
+			},
 			"",
 		},
 		{
-			"Should return empty map for empty JSON object (implicit no extra payload)",
-			[]byte(`{}`),
-			struct {
-				thing string
-			}{},
-			map[string]interface{}{},
+			"should fill multiple values matching field name",
+			map[string]json.RawMessage{
+				"FieldOne": []byte(`"value one"`),
+				"FieldTwo": []byte(`3`),
+			},
+			testStruct{},
+			testStruct{
+				"value one",
+				3,
+			},
 			"",
 		},
-		// Sad Path Cases
 		{
-			"Should return error for malformed JSON data",
-			[]byte(`json is easy to malform`),
-			struct {
-				SomeField string `json:"some_field"`
-			}{},
-			map[string]interface{}{},
-			"invalid character 'j' looking for beginning of value",
+			"should fill multiple values matching json tag",
+			map[string]json.RawMessage{
+				"field_one": []byte(`"value one"`),
+				"FieldTwo":  []byte(`4`),
+			},
+			testStruct{},
+			testStruct{
+				"value one",
+				4,
+			},
+			"",
+		},
+		// Sad Path
+		{
+			"should return error on bad JSON formatting",
+			map[string]json.RawMessage{
+				"field_one": []byte(`certainly not a raw json string`),
+			},
+			testStruct{},
+			testStruct{},
+			"invalid character 'c' looking for beginning of value",
 		},
 	}
-
 	for _, tc := range testCases {
 		t.Run(tc.testDescription, func(t *testing.T) {
-
-			result, err := getExtraPayload(tc.inData, tc.inStruct)
-
+			indirectedValue := reflect.Indirect(reflect.ValueOf(&tc.inStruct))
+			err := decodeMatching(tc.inMap, indirectedValue)
 			if tc.outErrMsg != "" {
 				assert.EqualError(t, err, tc.outErrMsg)
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, tc.outPayload, result)
+				assert.Equal(t, tc.outStruct, tc.inStruct)
 			}
 		})
 	}
