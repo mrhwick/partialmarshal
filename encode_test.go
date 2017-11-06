@@ -55,6 +55,28 @@ func TestMarshal(t *testing.T) {
 			"",
 		},
 		{
+			"should marshal extra field into top-level keys in array payload from slice pointer",
+			&[]struct {
+				FieldOne string
+				Extra
+			}{
+				{
+					"value one",
+					Extra{
+						"field_two": []byte(`"value two"`),
+					},
+				},
+				{
+					"second value one",
+					Extra{
+						"field_two": []byte(`"second value two"`),
+					},
+				},
+			},
+			[]byte(`[{"FieldOne":"value one","field_two":"value two"},{"FieldOne":"second value one","field_two":"second value two"}]`),
+			"",
+		},
+		{
 			"should marshal extra field into top-level keys in payload from non-pointer struct",
 			struct {
 				FieldOne string
