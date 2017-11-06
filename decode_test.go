@@ -243,6 +243,50 @@ func TestUnmarshal(t *testing.T) {
 			},
 			"",
 		},
+		{
+			"should unmarshal JSON array of extra payloaded objects into slice of struct with extra",
+			[]byte(`[{"field_one": "value one", "field_two": "value two"},{"field_one": "second value one", "field_two": "second value two"}]`),
+			&[]struct {
+				FieldOne string `json:"field_one"`
+				Extra
+			}{},
+			&[]struct {
+				FieldOne string `json:"field_one"`
+				Extra
+			}{
+				{
+					"value one",
+					map[string]json.RawMessage{
+						"field_two": []byte("\"value two\""),
+					},
+				},
+				{
+					"second value one",
+					map[string]json.RawMessage{
+						"field_two": []byte("\"second value two\""),
+					},
+				},
+			},
+			"",
+		},
+		{
+			"should unmarshal JSON array into struct slice field and still handle extra",
+			[]byte(`{"field_one": ["value one-one", "value one-two"], "field_two": "value two"}`),
+			&struct {
+				FieldOne []string `json:"field_one"`
+				Extra
+			}{},
+			&struct {
+				FieldOne []string `json:"field_one"`
+				Extra
+			}{
+				[]string{"value one-one", "value one-two"},
+				map[string]json.RawMessage{
+					"field_two": []byte("\"value two\""),
+				},
+			},
+			"",
+		},
 		// Sad Path Cases
 		{
 			"should return error when provided value not struct pointer",
@@ -262,13 +306,12 @@ func TestUnmarshal(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.testDescription, func(t *testing.T) {
-
 			err := Unmarshal(tc.inData, tc.inStruct)
 			if tc.outErrMsg != "" {
 				assert.EqualError(t, err, tc.outErrMsg)
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, tc.inStruct, tc.outStruct)
+				assert.Equal(t, tc.outStruct, tc.inStruct)
 			}
 		})
 	}
