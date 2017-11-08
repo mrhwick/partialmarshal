@@ -1,6 +1,7 @@
 package partialmarshal
 
 import (
+	"bytes"
 	"encoding/json"
 	"reflect"
 	"strings"
@@ -14,6 +15,40 @@ import (
 // unmatching data into the embedded Extra map.
 //
 func Unmarshal(data []byte, v interface{}) error {
+	if bytes.HasPrefix(data, []byte("[")) {
+		return unmarshalArray(data, v)
+	}
+	return unmarshalObject(data, v)
+}
+
+func unmarshalArray(data json.RawMessage, v interface{}) error {
+	var JSONObjectList []json.RawMessage
+	json.Unmarshal(data, &JSONObjectList)
+	reflectedValue := reflect.ValueOf(v)
+	if reflectedValue.Kind() != reflect.Ptr || reflectedValue.IsNil() {
+		return &json.InvalidUnmarshalError{
+			Type: reflect.TypeOf(v),
+		}
+	}
+	reflectedValue = reflect.Indirect(reflectedValue)
+	if reflectedValue.Kind() != reflect.Slice {
+		return &json.InvalidUnmarshalError{
+			Type: reflect.TypeOf(v),
+		}
+	}
+	for _, obj := range JSONObjectList {
+		sliceElementType := reflectedValue.Type().Elem()
+		temporarySliceElement := reflect.New(sliceElementType).Interface()
+		err := unmarshalObject(obj, temporarySliceElement)
+		if err != nil {
+			return err
+		}
+		reflectedValue.Set(reflect.Append(reflectedValue, reflect.Indirect(reflect.ValueOf(temporarySliceElement))))
+	}
+	return nil
+}
+
+func unmarshalObject(data json.RawMessage, v interface{}) error {
 	// 1. Check for a valid pointer to value of kind struct.
 	reflectedValue, err := getReflectedValue(v)
 	if err != nil {

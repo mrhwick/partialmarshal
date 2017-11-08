@@ -14,6 +14,30 @@ import (
 // the partialmarshal.Extra type as an embedded type in v and
 // places the extra payload into the JSON output as top-level key/value pairs.
 func Marshal(v interface{}) ([]byte, error) {
+	reflectedValue := reflect.Indirect(reflect.ValueOf(v))
+	if reflectedValue.Kind() == reflect.Struct {
+		return marshalObject(v)
+	}
+	if reflectedValue.Kind() == reflect.Slice {
+		return marshalArray(v)
+	}
+	return json.Marshal(v)
+}
+
+func marshalArray(v interface{}) ([]byte, error) {
+	slice := reflect.Indirect(reflect.ValueOf(v))
+	var objectArray []json.RawMessage
+	for i := 0; i < slice.Len(); i++ {
+		obj, err := marshalObject(slice.Index(i).Interface())
+		if err != nil {
+			return nil, err
+		}
+		objectArray = append(objectArray, obj)
+	}
+	return json.Marshal(objectArray)
+}
+
+func marshalObject(v interface{}) ([]byte, error) {
 	// 1. Detect and retrieve the partialmarshal.Extra embedded type
 	reflectedValue := reflect.Indirect(reflect.ValueOf(v))
 	if reflectedValue.Kind() != reflect.Struct {
