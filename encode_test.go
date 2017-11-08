@@ -20,7 +20,7 @@ func ExampleMarshal() {
 		"Value 1",
 		"Value 2",
 		Extra{
-			"some_other_field": "some other value",
+			"some_other_field": []byte(`"some other value"`),
 		},
 	}
 
@@ -48,7 +48,7 @@ func TestMarshal(t *testing.T) {
 			}{
 				"value one",
 				Extra{
-					"field_two": "value two",
+					"field_two": []byte(`"value two"`),
 				},
 			},
 			[]byte(`{"FieldOne":"value one","field_two":"value two"}`),
@@ -62,7 +62,7 @@ func TestMarshal(t *testing.T) {
 			}{
 				"value one",
 				Extra{
-					"field_two": "value two",
+					"field_two": []byte(`"value two"`),
 				},
 			},
 			[]byte(`{"FieldOne":"value one","field_two":"value two"}`),
@@ -76,28 +76,55 @@ func TestMarshal(t *testing.T) {
 			}{
 				"value one",
 				Extra{
-					"field_two": "value two",
+					"field_two": []byte(`"value two"`),
 				},
 			},
 			[]byte(`{"field_one":"value one","field_two":"value two"}`),
 			"",
 		},
+		{
+			"should marshal substruct fields",
+			&struct {
+				FieldOne       string `json:"field_one"`
+				FieldSubStruct struct {
+					SubFieldOne string `json:"sub_field_one"`
+					Extra
+				} `json:"field_sub_struct"`
+				Extra
+			}{
+				"value one",
+				struct {
+					SubFieldOne string `json:"sub_field_one"`
+					Extra
+				}{
+					"sub value one",
+					Extra{
+						"sub_field_two": []byte(`"sub value two"`),
+					},
+				},
+				Extra{
+					"field_two": []byte(`"value two"`),
+				},
+			},
+			[]byte(`{"field_one":"value one","field_sub_struct":{"sub_field_one":"sub value one","sub_field_two":"sub value two"},"field_two":"value two"}`),
+			"",
+		},
 		// Sad Path Cases
 		{
-			"should return error when no partialmarshal.Extra embedded type present",
+			"should return normal encoding when no partialmarshal.Extra embedded type present",
 			&struct {
 				FieldOne string `json:"field_one"`
 			}{
 				"value one",
 			},
-			nil,
-			"no partialmarshal.Extra embedded type found in provided struct",
+			[]byte(`{"field_one":"value one"}`),
+			"",
 		},
 		{
-			"should return error when provided value not struct/struct pointer",
+			"should return normal encoding when provided with non-struct/non-struct pointer",
 			"",
-			nil,
-			"value must be of type struct",
+			[]byte(`""`),
+			"",
 		},
 	}
 
@@ -109,7 +136,7 @@ func TestMarshal(t *testing.T) {
 				assert.EqualError(t, err, tc.outErrMsg)
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, tc.outData, result)
+				assert.Equal(t, tc.outData, result, fmt.Sprintf("%s\n!= %s", tc.outData, result))
 			}
 		})
 	}
