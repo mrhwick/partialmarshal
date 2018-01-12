@@ -144,6 +144,43 @@ func TestUnmarshal(t *testing.T) {
 			"",
 		},
 		{
+			"should unmarshal extra payload into extra field of a slice of substruct with matching json tags",
+			[]byte(`{"field_one": "value one", "FieldSubStructs": [{"sub_field_one": "sub value one", "sub_field_two": "sub value two"}], "field_two": "value two"}`),
+			&struct {
+				FieldOne        string `json:"field_one"`
+				FieldSubStructs []struct {
+					SubFieldOne string `json:"sub_field_one"`
+					Extra
+				}
+				Extra
+			}{},
+			&struct {
+				FieldOne        string `json:"field_one"`
+				FieldSubStructs []struct {
+					SubFieldOne string `json:"sub_field_one"`
+					Extra
+				}
+				Extra
+			}{
+				"value one",
+				[]struct {
+					SubFieldOne string `json:"sub_field_one"`
+					Extra
+				}{
+					{
+						"sub value one",
+						map[string]json.RawMessage{
+							"sub_field_two": []byte("\"sub value two\""),
+						},
+					},
+				},
+				map[string]json.RawMessage{
+					"field_two": []byte("\"value two\""),
+				},
+			},
+			"",
+		},
+		{
 			"should unmarshal extra payload into extra field of substruct with matching substruct json tags",
 			[]byte(`{"field_one": "value one", "field_sub_struct": {"sub_field_one": "sub value one", "sub_field_two": "sub value two"}, "field_two": "value two"}`),
 			&struct {
