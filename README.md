@@ -1,4 +1,4 @@
-# PartialMarshal [![GoDoc](https://godoc.org/github.com/skuid/partialmarshal?status.svg)](https://godoc.org/github.com/skuid/partialmarshal) [![Build Status](https://travis-ci.org/skuid/partialmarshal.svg?branch=master)](https://travis-ci.org/skuid/partialmarshal) [![Go Report Card](https://goreportcard.com/badge/github.com/skuid/partialmarshal)](https://goreportcard.com/report/github.com/skuid/partialmarshal)
+# PartialMarshal [![GoDoc](https://godoc.org/github.com/mrhwick/partialmarshal?status.svg)](https://godoc.org/github.com/mrhwick/partialmarshal) [![Build Status](https://travis-ci.org/mrhwick/partialmarshal.svg?branch=master)](https://travis-ci.org/mrhwick/partialmarshal) [![Go Report Card](https://goreportcard.com/badge/github.com/mrhwick/partialmarshal)](https://goreportcard.com/report/github.com/mrhwick/partialmarshal)
 
 A Go library for JSON marshaling  with extra payloads.
 
@@ -7,7 +7,7 @@ Standard Go JSON marshaling into a struct discards any unmatching fields from th
 ## Install
 
 ```bash
-go get github.com/skuid/partialmarshal
+go get github.com/mrhwick/partialmarshal
 ```
 
 ## Usage and Examples
